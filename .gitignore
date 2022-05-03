@@ -1,0 +1,11 @@
+*.idea
+
+*.pkl
+*.pickle
+*.pdf
+*.log
+*.pytorch
+*.png
+
+
+*/valid_indices
