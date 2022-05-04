@@ -6,13 +6,15 @@ import numpy as np
 import pickle
 import torch
 import re
-from scipy.cluster.hierarchy import dendrogram
+from scipy.cluster.hierarchy import dendrogram, fcluster
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.metrics import f1_score
 from elm_prediction import package_dir
 import matplotlib.pyplot as plt
 from elm_prediction.src import utils
-#%%
+
+
+# %%
 
 def get_elm_predictions():
     """Returns elm_predictions from elm_prediction.analyze.calc_inference"""
@@ -51,42 +53,55 @@ def get_elm_predictions():
     )
 
     elm_predictions = calc_inference(args=args,
-                                    logger=logger,
-                                    model=model,
-                                    device=device,
-                                    test_data=test_data)
+                                     logger=logger,
+                                     model=model,
+                                     device=device,
+                                     test_data=test_data)
 
     return elm_predictions
 
-#%%
-def id_elms(elm_predictions):
 
-    ids = np.empty((len(elm_predictions), 3))
+# %%
+def id_elms(elm_predictions):
+    """
+    Function to return identifying features of ELM events.
+    :param elm_predictions:
+    :return: list[std(pre-ELM), max(ELM), min(ELM), len(active-ELM), gradient(first ELM >= 5V)]
+    """
+    ids = np.empty((len(elm_predictions), 5, 8))
     for i, elm in enumerate(elm_predictions.values()):
-        ch_22 = elm['signals'][:, 2, 5]
-        p_elm = ch_22[elm['labels']==0]
-        a_elm = ch_22[elm['labels']==1]
+        cs = elm['signals'][:, 2, :]
+        p_elm = cs[elm['labels'] == 0]
+        a_elm = cs[elm['labels'] == 1]
+        first_5 = a_elm[(a_elm >= 5).any(axis=1).argmax()]  # cross-section of BES array first time any is > 5V
 
         id = [
-            np.std(p_elm),
-            np.max(ch_22),
-            np.min(ch_22)
+            np.std(p_elm, axis=0),
+            np.max(cs, axis=0),
+            np.min(cs, axis=0),
+            np.full((8,), len(a_elm)),
+            np.gradient(first_5),
         ]
 
-        ids[i, :] = id
+        ids[i, ...] = id
 
     # normalize between 0 and 1
-    for i in range(ids.shape[-1]):
-        if ids[:, i].max() != ids[:, i].min():
-            ids[:, i] = (ids[:, i] - ids[:, i].min()) / (ids[:, i].max() - ids[:, i].min())
+    for i in range(ids.shape[1]):
+        if ids[:, i, :].max() != ids[:, i, :].min():
+            ids[:, i, :] = (ids[:, i, :] - ids[:, i, :].min()) / (ids[:, i, :].max() - ids[:, i, :].min())
         else:
-            ids[:, i] = 1
+            ids[:, i, :] = 1
 
     return ids
 
-#%%
-def plot_dendrogram(model, **kwargs):
-    # Create linkage matrix and then plot the dendrogram
+
+# %%
+def make_linkage_matrix(ids, distance_sort: bool = False):
+
+    # define model
+    model = AgglomerativeClustering(compute_distances=True)
+    model = model.fit(ids.reshape(len(ids), -1))
+
 
     # create the counts of samples under each node
     counts = np.zeros(model.children_.shape[0])
@@ -104,59 +119,55 @@ def plot_dendrogram(model, **kwargs):
         [model.children_, model.distances_, counts]
     ).astype(float)
     # Plot the corresponding dendrogram
-    dendrogram(linkage_matrix, **kwargs)
 
-    return dendrogram
+    if distance_sort:
+        linkage_matrix = linkage_matrix[linkage_matrix[:, 2].argsort()]
 
-#%%
-def make_dendrogram(ids, **kwargs):
+    return linkage_matrix
 
-    model = AgglomerativeClustering(distance_threshold=0, n_clusters=None)
-    model = model.fit(ids)
 
-    if not (ax:=kwargs.pop('ax', None)):
+def plot_dendrogram(linkage_matrix, ax=None, thresh=None, **kwargs):
+
+    if not ax:
         ax = plt.gca()
 
     ax.set_title("Hierarchical Clustering Dendrogram of ELM Feature Distance")
-    # plot the top three levels of the dendrogram
-    plot_dendrogram(model, ax=ax, **kwargs)
+    dendrogram(linkage_matrix, color_threshold=thresh, ax=ax, **kwargs)
+    # get clusters calculated in dendrogram
     ax.set_xlabel("ELM Index")
 
 
-#%%
-if __name__ == '__main__':
-    #%%
-    with open(Path(__file__).parent/'run_dir_classification/elm_predictions.pkl', 'r+b') as f:
-        elm_predictions = pickle.load(f)
-    #%%
-    ids = id_elms(elm_predictions)
-    #%%
-    fig, ax = plt.subplots(1, 1, figsize=(16, 9))
-    ax1 = ax
-    ax2 = ax1.twinx()
-    fig_fake, ax_fake = plt.subplots(1,1)
-    # make dendrogram
-    make_dendrogram(ids, ax=ax_fake, distance_sort=True)
+def plot_groups(elm_predictions, thresh: float = None):
 
-    #get f1 score of each elm to plot
+    # make linkage_matrix
+    linkage_matrix = make_linkage_matrix(ids)
+
+    # get order of elms in dendrogram
+    fig_fake, ax_fake = plt.subplots(1, 1)
+    plot_dendrogram(linkage_matrix, ax=ax_fake) #used only for this section
+    # elm_idxs is the index of the ELM in the array of all elmms, not the index assigned in calc_inference
+    elm_idxs = [int(re.findall(r'\d+', x.get_text())[0]) for x in ax_fake.get_xticklabels()]
+    tick_locations = ax_fake.get_xticks()
+    bar_locations = list(list(zip(*sorted(zip(elm_idxs, tick_locations))))[-1])
+
+    ### Make real plot
+    fig, ax1 = plt.subplots(1, 1, figsize=(16, 9))
+    ax2 = ax1.twinx()
+
+    # get f1 score of each elm to plot
     f1 = []
     for elm in elm_predictions.values():
         f1.append(f1_score(elm['labels'], (elm['micro_predictions'] >= 0.4)))
-    f1 = np.array(f1)
-
-    #get order of elms in dendrogram
-    elm_idxs = [int(re.findall(r'\d+', x.get_text())[0]) for x in ax_fake.get_xticklabels()]
-    tick_locations = ax_fake.get_xticks()
-    elm_idxs, elm_loc = zip(*sorted(zip(elm_idxs, tick_locations)))
-
     # add bar graph with f1 scores
     color = 'tab:blue'
-    ax2.bar(elm_loc, f1, width=np.diff(tick_locations).min(), color=color, alpha=0.5)
+    ax2.bar(bar_locations, f1, width=np.diff(tick_locations).min(), color=color, alpha=0.5)
     ax2.tick_params(axis='y', color=color, labelcolor=color)
 
     # allow context manager for dendrogram
     with plt.rc_context({'lines.linewidth': 2.5}):
-        make_dendrogram(ids, ax=ax1)
+        plot_dendrogram(linkage_matrix, thresh=thresh, ax=ax1)
+        if thresh:
+            ax1.axhline(thresh, color='tab:gray', ls='--', label='Threshold')
 
     # Configure plot
     ax1.grid(False)
@@ -167,8 +178,28 @@ if __name__ == '__main__':
 
     ax1.set_zorder(ax2.get_zorder() + 1)
     ax1.patch.set_visible(False)
+    ax1.set_xticklabels(np.array([*elm_predictions.keys()])[elm_idxs])
 
     plt.tight_layout()
-    fig.savefig(Path(__file__).parent/'run_dir_classification/plots/dendrogram.png')
-    plt.close(fig_fake)
+    fig.savefig(Path(__file__).parent / 'run_dir_classification/plots/dendrogram.png')
     fig.show()
+
+    if thresh:
+        clusters = fcluster(linkage_matrix, t=thresh, criterion='distance')
+        clusters_unique = np.unique(clusters)
+        group_elms = tuple(np.array([*elm_predictions.keys()])[clusters == cluster_id] for cluster_id in clusters_unique)
+    else:
+        group_elms = None
+
+    return group_elms
+
+# %%
+if __name__ == '__main__':
+    # %%
+    with open(Path(__file__).parent / 'run_dir_classification/elm_predictions.pkl', 'r+b') as f:
+        elm_predictions = pickle.load(f)
+    # %%
+    ids = id_elms(elm_predictions)
+    thresh = 2
+    groups = plot_groups(elm_predictions, thresh)
+
