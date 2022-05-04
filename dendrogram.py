@@ -137,7 +137,15 @@ def plot_dendrogram(linkage_matrix, ax=None, thresh=None, **kwargs):
     ax.set_xlabel("ELM Index")
 
 
-def plot_groups(elm_predictions, thresh: float = None):
+def plot_groups(elm_predictions, thresh: float = None, distance_sort: bool = False):
+
+    """
+    Function to plot dendrogram from elm_prediction nested dict
+    :param elm_predictions: nested dict of ELMs from analyze.calc_inference
+    :param thresh: (optional) threshold value for dendrogram and clustering algorithm
+    :param distance_sort: (optional) sort plotted dendrogram by smallest distance first.
+    :return: tuple(np.ndarray) ELM indexes (from analyze.calc_inference) grouped by distance below threshold.
+    """
 
     # make linkage_matrix
     linkage_matrix = make_linkage_matrix(ids)
@@ -149,6 +157,7 @@ def plot_groups(elm_predictions, thresh: float = None):
     elm_idxs = [int(re.findall(r'\d+', x.get_text())[0]) for x in ax_fake.get_xticklabels()]
     tick_locations = ax_fake.get_xticks()
     bar_locations = list(list(zip(*sorted(zip(elm_idxs, tick_locations))))[-1])
+    plt.close(fig_fake)
 
     ### Make real plot
     fig, ax1 = plt.subplots(1, 1, figsize=(16, 9))
@@ -165,7 +174,7 @@ def plot_groups(elm_predictions, thresh: float = None):
 
     # allow context manager for dendrogram
     with plt.rc_context({'lines.linewidth': 2.5}):
-        plot_dendrogram(linkage_matrix, thresh=thresh, ax=ax1)
+        plot_dendrogram(linkage_matrix, thresh=thresh, ax=ax1, distance_sort=distance_sort)
         if thresh:
             ax1.axhline(thresh, color='tab:gray', ls='--', label='Threshold')
 
