@@ -10,6 +10,7 @@ from elm_prediction.train import train_loop
 
 
 if __name__ == '__main__':
+
     with open(Path(__file__).parent / 'run_dir_classification/elm_predictions.pkl', 'r+b') as f:
         elm_predictions = pickle.load(f)
 
