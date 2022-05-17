@@ -11,7 +11,7 @@ if __name__ == '__main__':
     # plt.close('all')
     log = False
     suffix = '_log' if log else ''
-    args_file = Path(__file__).parent / f'run_dir_regression{suffix}/args_regression{suffix}.pkl'
+    args_file = Path(__file__).parent / f'run_dir_classification_clustered/args.pkl'
     with args_file.open('rb') as f:
         args = pickle.load(f)
 

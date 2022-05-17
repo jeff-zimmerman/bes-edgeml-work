@@ -242,9 +242,9 @@ def plot_groups(elm_predictions,
 def cluster_groups(elm_predictions: dict, thresh: float, ids: np.ndarray = None, scale: str = None):
     if ids is None:
         ids = id_elms(elm_predictions, scale=scale)
-    linkage_matrix = linkage(ids.reshape(ids.shape[0], -1), method='ward', optimal_ordering=True)
+    linkage_matrix = linkage(ids.reshape(ids.shape[0], -1), method='ward')
     clusters = fcluster(linkage_matrix, t=thresh, criterion='distance')
-    clusters_unique = np.unique(clusters)
+    clusters_unique = np.sort(np.unique(clusters))
     group_elms = tuple(np.array([*elm_predictions.keys()])[clusters == cluster_id] for cluster_id in clusters_unique)
     return group_elms
 
