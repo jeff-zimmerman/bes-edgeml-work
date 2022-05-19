@@ -6,6 +6,7 @@
 *.log
 *.pytorch
 *.png
-
+*.hdf5
 
 */valid_indices
+
