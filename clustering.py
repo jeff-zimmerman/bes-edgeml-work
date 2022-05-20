@@ -45,11 +45,11 @@ class Clustering:
             elm_predictions = self.elm_predictions
         else:
             try:
-                assert Path(run_dir).exists()
-                with open(Path(run_dir) / 'elm_predictions.pkl', 'r+b') as f:
+                assert self.run_dir.exists()
+                with open(self.run_dir / 'elm_predictions.pkl', 'r+b') as f:
                     elm_predictions = pickle.load(f)
-            except AssertionError:
-                run = Analysis(run_dir)
+            except (AssertionError, FileNotFoundError):
+                run = Analysis(self.run_dir)
                 if self.test_data_file is not None:
                     run.test_data_file = self.dataset_dir / Path(self.test_data_file)
                 elm_predictions = run._calc_inference_full()

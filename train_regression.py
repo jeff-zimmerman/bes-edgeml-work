@@ -3,7 +3,7 @@ from elm_prediction import package_dir
 from pathlib import Path
 
 if __name__ == '__main__':
-    args = {'model_name': 'multi_features_ds',
+    args = {'model_name': 'multi_features_ds_v2',
             'input_data_file': package_dir / 'labeled_elm_events_long_windows_20220419.hdf5',
             'device': 'cuda',
             'batch_size': 64,
