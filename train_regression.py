@@ -1,4 +1,4 @@
-from elm_prediction.train_regression import train_loop
+from elm_prediction.train import train_loop
 from elm_prediction import package_dir
 from pathlib import Path
 

@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 
-from elm_prediction.train_regression import train_loop
+from elm_prediction.train import train_loop
 from elm_prediction import package_dir
 import optuna
 from pathlib import Path

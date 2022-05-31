@@ -5,6 +5,6 @@ import pickle
 
 if __name__ == '__main__':
 
-    run = Analysis('run_dir_classification_clustered')
+    run = Analysis('run_dir_regression_log_clustered')
     run.plot_all()
     run.show()

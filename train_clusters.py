@@ -19,7 +19,7 @@ if __name__ == '__main__':
     l_cluster = cluster[np.argmax([len(i) for i in cluster])]
 
     try:
-        h = h5py.File('clustered_datasets/labeled_elm_events_regression_cluster_1.hdf5', 'w-')
+        h = h5py.File('clustering_datasets/clustered/labeled_elm_events_regression_cluster_1.hdf5', 'w-')
         for elm, vals in clusters.elm_predictions.items():
             if elm not in l_cluster:
                 continue
@@ -33,12 +33,13 @@ if __name__ == '__main__':
         pass
 
     args = {'model_name': 'multi_features_ds_v2',
-            'input_data_file': 'clustered_datasets/labeled_elm_events_regression_cluster_1.hdf5',
+            'input_data_file': 'clustering_datasets/clustered/labeled_elm_events_regression_cluster_1.hdf5',
             'device': 'cuda',
             'batch_size': 64,
             'n_epochs': 20,
             'max_elms': -1,
-            'fraction_test': 0.05,
+            'fraction_test': 0.1,
+            'fractiom_valid': 0.1,
             'fft_num_filters': 20,
             'dwt_num_filters': 20,
             'signal_window_size': 256,

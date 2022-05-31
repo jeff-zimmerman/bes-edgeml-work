@@ -46,13 +46,16 @@ class Clustering:
         else:
             try:
                 assert self.run_dir.exists()
-                with open(self.run_dir / 'elm_predictions.pkl', 'r+b') as f:
+                with open(self.run_dir / 'elm_predictions.pkl', 'rb') as f:
                     elm_predictions = pickle.load(f)
             except (AssertionError, FileNotFoundError):
                 run = Analysis(self.run_dir)
                 if self.test_data_file is not None:
                     run.test_data_file = self.dataset_dir / Path(self.test_data_file)
-                elm_predictions = run._calc_inference_full()
+                run._calc_inference_full()
+                elm_predictions = run.elm_predictions
+                with open(self.run_dir / 'elm_predictions.pkl', 'w+b') as f:
+                    pickle.dump(elm_predictions, f)
 
             self.elm_predictions = elm_predictions
 
@@ -403,7 +406,7 @@ class Clustering:
 if __name__ == '__main__':
     # %%
     base_dir = Path('/home/jazimmerman/PycharmProjects/bes-edgeml-models/bes-edgeml-work/')
-    run_dir = base_dir / 'run_dir_classification'
+    run_dir = base_dir / 'run_dir_regression_log_long'
     dataset_dir = base_dir / 'clustering_datasets'
 
     clusters = Clustering(run_dir, dataset_dir)
